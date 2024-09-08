@@ -4,6 +4,9 @@ import argparse
 def parse_args():    
     parser = argparse.ArgumentParser()
     parser.add_argument('-net', type=str, default='sam2', help='net type')
+    #change
+    parser.add_argument('-save_nii', action='store_true', help='saving all the nii files or not')
+    
     parser.add_argument('-encoder', type=str, default='vit_b', help='encoder type')
     parser.add_argument('-exp_name', default='samba_train_test', type=str, help='experiment name')
     parser.add_argument('-vis', type=bool, default=False, help='Generate visualisation during validation')

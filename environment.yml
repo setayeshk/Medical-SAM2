@@ -79,6 +79,7 @@ dependencies:
       - cffi==1.16.0
       - charset-normalizer==3.3.2
       - connected-components-3d==3.18.0
+      
       - contourpy==1.2.1
       - cycler==0.12.1
       - defusedxml==0.7.1

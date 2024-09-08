@@ -5,5 +5,8 @@
 # LICENSE file in the root directory of this source tree.
 
 from hydra import initialize_config_module
+#change hydra problem
+import hydra
 
+hydra.core.global_hydra.GlobalHydra.instance().clear()
 initialize_config_module("sam2_train", version_base="1.2")

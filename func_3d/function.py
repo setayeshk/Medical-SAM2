@@ -1,6 +1,6 @@
-""" function for training and validation in one epoch
-    Yunli Qi
-"""
+# """ function for training and validation in one epoch
+#     Yunli Qi
+# """
 
 import os
 import matplotlib.pyplot as plt
@@ -14,6 +14,8 @@ from tqdm import tqdm
 import cfg
 from conf import settings
 from func_3d.utils import eval_seg
+import nibabel as nib
+import numpy as np
 
 args = cfg.parse_args()
 
@@ -148,7 +150,7 @@ def train_sam(args, net: nn.Module, optimizer1, optimizer2, train_loader,
                         if args.train_vis:
                             os.makedirs(f'./temp/train/{name[0]}/{id}', exist_ok=True)
                             fig, ax = plt.subplots(1, 3)
-                            ax[0].imshow(imgs_tensor[id, :, :, :].detach().cpu().permute(1, 2, 0).numpy().astype(int))
+                            ax[0].imshow(imgs_tensor[id, :, :, :].detach().cpu().permute(1, 2, 0).numpy())
                             ax[0].axis('off')
                             ax[1].imshow(pred[0, 0, :, :].detach().cpu().numpy() > 0.5, cmap='gray')
                             ax[1].axis('off')
@@ -200,14 +202,19 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
     net.eval()
 
     n_val = len(val_loader)  # the number of batch
+    # برای ذخیره  (IoU و Dice Coefficient) 
     mix_res = (0,)*1*2
+    # chat => برای ذخیره کل loss 
+    # tree of thoughts for prompt engineering  ** 
     tot = 0
     threshold = (0.1, 0.3, 0.5, 0.7, 0.9)
+    #چند فریم یه بار پرامپت بده 
     prompt_freq = args.prompt_freq
 
     lossfunc = criterion_G
     # lossfunc = paper_loss
 
+    # باکس یا نقطه
     prompt = args.prompt
 
     with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
@@ -223,7 +230,8 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                 imgs_tensor = imgs_tensor.squeeze(0)
             frame_id = list(range(imgs_tensor.size(0)))
             
-            train_state = net.val_init_state(imgs_tensor=imgs_tensor)
+            train_state = net.val_init_state(imgs_tensor=imgs_tensor) 
+            # رندوم به تعدادی که فرکانس میگه فریم برمیداره که پرامپت درست کنه
             prompt_frame_id = list(range(0, len(frame_id), prompt_freq))
             obj_list = []
             for id in frame_id:
@@ -239,6 +247,7 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                     for ann_obj_id in obj_list:
                         try:
                             if prompt == 'click':
+                                # point ها رو توی btcv.py اضافه کرده
                                 points = pt_dict[id][ann_obj_id].to(device=GPUdevice)
                                 labels = point_labels_dict[id][ann_obj_id].to(device=GPUdevice)
                                 _, _, _ = net.train_add_new_points(
@@ -259,6 +268,7 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                                     clear_old_points=False,
                                 )
                         except KeyError:
+                            #اگه obj نبود و اینا ماسک 0 میده
                             _, _, _ = net.train_add_new_mask(
                                 inference_state=train_state,
                                 frame_idx=id,
@@ -266,13 +276,18 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                                 mask = torch.zeros(imgs_tensor.shape[2:]).to(device=GPUdevice),
                             )
                 video_segments = {}  # video_segments contains the per-frame segmentation results
-            
+
+                #? propagate in video ***
                 for out_frame_idx, out_obj_ids, out_mask_logits in net.propagate_in_video(train_state, start_frame_idx=0):
                     video_segments[out_frame_idx] = {
+                        #out_obj_id -> id for each obj
+                        #out_frame_idx -> if of frame
                         out_obj_id: out_mask_logits[i]
                         for i, out_obj_id in enumerate(out_obj_ids)
                     }
 
+
+                                
                 loss = 0
                 pred_iou = 0
                 pred_dice = 0
@@ -288,7 +303,8 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                         if args.vis:
                             os.makedirs(f'./temp/val/{name[0]}/{id}', exist_ok=True)
                             fig, ax = plt.subplots(1, 3)
-                            ax[0].imshow(imgs_tensor[id, :, :, :].cpu().permute(1, 2, 0).numpy().astype(int))
+                            #تصویر اصلی
+                            ax[0].imshow(imgs_tensor[id, :, :, :].cpu().permute(1, 2, 0).numpy())
                             ax[0].axis('off')
                             ax[1].imshow(pred[0, 0, :, :].cpu().numpy() > 0.5, cmap='gray')
                             ax[1].axis('off')
@@ -300,6 +316,26 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                         temp = eval_seg(pred, mask, threshold)
                         pred_iou += temp[0]
                         pred_dice += temp[1]
+
+
+                
+                # # change for saving results as nifti file
+                # if args.save_nii:
+                  
+                #     nii_dir = f'./nii_outputs/{name[0]}/{id}'
+                #     os.makedirs(nii_dir, exist_ok=True)
+                    
+                #     pred_np = pred.cpu().numpy()
+                #     mask_np = mask.cpu().numpy()
+                    
+                #     pred_np = np.squeeze(pred_np)
+                #     mask_np = np.squeeze(mask_np)
+                    
+                #     pred_img = nib.Nifti1Image(pred_np, affine=np.eye(4))
+                #     mask_img = nib.Nifti1Image(mask_np, affine=np.eye(4))
+                    
+                #     nib.save(pred_img, f'{nii_dir}/pred_{ann_obj_id}.nii')
+                #     nib.save(mask_img, f'{nii_dir}/mask_{ann_obj_id}.nii')
 
                 total_num = len(frame_id) * len(obj_list)
                 loss = loss / total_num

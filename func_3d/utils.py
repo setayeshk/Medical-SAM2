@@ -16,6 +16,9 @@ from torch.autograd import Function
 
 import cfg
 
+
+
+
 args = cfg.parse_args()
 device = torch.device('cuda', args.gpu_device)
 
@@ -104,6 +107,8 @@ def random_click(mask, point_labels = 1, seed=None):
     output_index_0 = indices[rand_num][1]
     return point_labels, np.array([output_index_0, output_index_1])
 
+
+#برای کشیدن خودکار باکس برای تست که کل ماسک رو میگیره و یه باکس میده که ماسک توش باشه
 def generate_bbox(mask, variation=0, seed=None):
     if seed is not None:
         np.random.seed(seed)
@@ -136,6 +141,8 @@ def generate_bbox(mask, variation=0, seed=None):
         y0 = mid_y - h / 2
     return np.array([y0, x0, y1, x1])
 
+
+# ورودی تخمین ها و gt برای یه بچ حالا dice score اینا میانگینش رو میده
 def eval_seg(pred,true_mask_p,threshold):
     '''
     threshold: a int or a tuple of int
