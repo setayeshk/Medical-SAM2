@@ -54,16 +54,19 @@ class BRATS(Dataset):
         img_3d = nib.load(img_path)
         img_3d =  np.array(img_3d.get_fdata())
 
-        for i in range(data_seg_3d.shape[-1]):
-            if np.sum(data_seg_3d[..., i]) > 0:
-                data_seg_3d = data_seg_3d[..., i:]
-                break
-        starting_frame_nonzero = i
+        # print("segmentation: " ,data_seg_3d.shape)
+        starting_frame_nonzero = 0
+        if(self.mode == "Training"):
+            for i in range(data_seg_3d.shape[-1]):
+                if np.sum(data_seg_3d[..., i]) > 0:
+                    data_seg_3d = data_seg_3d[..., i:]
+                    break
+            starting_frame_nonzero = i
 
-        for j in reversed(range(data_seg_3d.shape[-1])):
-            if np.sum(data_seg_3d[..., j]) > 0:
-                data_seg_3d = data_seg_3d[..., :j+1]
-                break
+            for j in reversed(range(data_seg_3d.shape[-1])):
+                if np.sum(data_seg_3d[..., j]) > 0:
+                    data_seg_3d = data_seg_3d[..., :j+1]
+                    break
 
         #number of tumor frames
         num_frame = data_seg_3d.shape[-1]
@@ -75,19 +78,13 @@ class BRATS(Dataset):
                 video_length = 155
         else:
             video_length = min(self.video_length, 155)
-        # print("img shape :", img_3d.shape)
-        # ا
-        # print("video lenght: ", self.video_length)
-        # if self.video_length is None:
-        #     video_length = int(num_frame / 4)
-        # else:
-        #     video_length = self.video_length
-        # # video_length=20
+
 
         if num_frame > video_length and self.mode == 'Training':
             starting_frame = np.random.randint(0, num_frame - video_length + 1)
         else:
             starting_frame = 0
+            
         img_tensor = torch.zeros(video_length, 3, self.img_size, self.img_size)
         mask_dict = {}
         point_label_dict = {}
