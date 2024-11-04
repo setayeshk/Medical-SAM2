@@ -3,8 +3,8 @@ from .amos import AMOS
 from .brats import BRATS
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-
-
+from sklearn.model_selection import train_test_split
+import os
 
 def get_dataloader(args):
     # transform_train = transforms.Compose([
@@ -27,6 +27,9 @@ def get_dataloader(args):
     #     transforms.ToTensor(),
     # ])
     
+
+
+
     if args.dataset == 'btcv':
         '''btcv data'''
         btcv_train_dataset = BTCV(args, args.data_path, transform = None, transform_msk= None, mode = 'Training', prompt=args.prompt)
@@ -44,9 +47,13 @@ def get_dataloader(args):
         nice_test_loader = DataLoader(amos_test_dataset, batch_size=1, shuffle=False, num_workers=1, pin_memory=True)
         '''end'''
     elif args.dataset == 'brats':
+        
         '''brats data'''
-        brats_train_dataset = BRATS(args, args.data_path, transform = None, transform_msk= None, mode = 'Training', prompt=args.prompt)
-        brats_test_dataset = BRATS(args, args.data_path, transform = None, transform_msk= None, mode = 'Test', prompt=args.prompt)
+        all_names = [name for name in sorted(os.listdir(args.data_path)) if "BraTS" in name]
+        train_names, val_names = train_test_split(all_names, test_size=0.2, random_state=42)
+
+        brats_train_dataset = BRATS(args, args.data_path , train_names, transform = None, transform_msk= None, mode = 'Training', prompt=args.prompt)
+        brats_test_dataset = BRATS(args, args.data_path ,val_names, transform = None, transform_msk= None, mode = 'Test', prompt=args.prompt)
 
         nice_train_loader = DataLoader(brats_train_dataset, batch_size=1, shuffle=True, num_workers=8, pin_memory=True)
         nice_test_loader = DataLoader(brats_test_dataset, batch_size=1, shuffle=False, num_workers=1, pin_memory=True)
