@@ -21,10 +21,11 @@ class BRATS(Dataset):
         self.transform_msk = transform_msk
         self.seed = seed
         self.variation = variation
-        if mode == 'Training':
-            self.video_length = args.video_length
-        else:
-            self.video_length = None
+        self.video_length = args.video_length
+        # if mode == 'Training':
+        # self.video_length = args.video_length
+        # else:
+        #     self.video_length = None
 
         # # برای اون دو تا فولدر csv 
         # self.previous_data = None
@@ -63,15 +64,25 @@ class BRATS(Dataset):
             if np.sum(data_seg_3d[..., j]) > 0:
                 data_seg_3d = data_seg_3d[..., :j+1]
                 break
+
+        #number of tumor frames
         num_frame = data_seg_3d.shape[-1]
 
+        if self.video_length is None:
+            if self.mode == 'Training':
+                video_length = num_frame/4
+            else:  
+                video_length = 155
+        else:
+            video_length = min(self.video_length, 155)
         # print("img shape :", img_3d.shape)
         # ا
-        if self.video_length is None:
-            video_length = int(num_frame / 4)
-        else:
-            video_length = self.video_length
-        # video_length=20
+        # print("video lenght: ", self.video_length)
+        # if self.video_length is None:
+        #     video_length = int(num_frame / 4)
+        # else:
+        #     video_length = self.video_length
+        # # video_length=20
 
         if num_frame > video_length and self.mode == 'Training':
             starting_frame = np.random.randint(0, num_frame - video_length + 1)
@@ -82,7 +93,8 @@ class BRATS(Dataset):
         point_label_dict = {}
         pt_dict = {}
         bbox_dict = {}
-        # print("video lenght: ", video_length)
+        print("video lenght: ", video_length)
+
         for frame_index in range(starting_frame, starting_frame + video_length):
             # print("frame_index ", frame_index)
         
