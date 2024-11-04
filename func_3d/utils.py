@@ -92,23 +92,30 @@ def save_checkpoint(states, is_best, output_dir,
 
 def random_click(mask, point_labels = 1, seed=None):
     # check if all masks are black
+  
+    # print("mask: " , mask)
     max_label = max(set(mask.flatten()))
+    print(set(mask.flatten()))
+    print("max label: ", max_label)
     if max_label == 0:
         point_labels = max_label
     # max agreement position
     indices = np.argwhere(mask == max_label) 
     # return point_labels, indices[np.random.randint(len(indices))]
+    print("indices: ",indices)
     if seed is not None:
         rand_instance = random.Random(seed)
         rand_num = rand_instance.randint(0, len(indices) - 1)
     else:
         rand_num = random.randint(0, len(indices) - 1)
+    # x , y adad random
     output_index_1 = indices[rand_num][0]
     output_index_0 = indices[rand_num][1]
+    print("random x,y: ", np.array([output_index_0, output_index_1]))
     return point_labels, np.array([output_index_0, output_index_1])
 
 
-#برای کشیدن خودکار باکس برای تست که کل ماسک رو میگیره و یه باکس میده که ماسک توش باشه
+
 def generate_bbox(mask, variation=0, seed=None):
     if seed is not None:
         np.random.seed(seed)
@@ -143,6 +150,7 @@ def generate_bbox(mask, variation=0, seed=None):
 
 
 # ورودی تخمین ها و gt برای یه بچ حالا dice score اینا میانگینش رو میده
+# do bodi?
 def eval_seg(pred,true_mask_p,threshold):
     '''
     threshold: a int or a tuple of int
@@ -151,6 +159,7 @@ def eval_seg(pred,true_mask_p,threshold):
     '''
     b, c, h, w = pred.size()
     if c == 2:
+
         iou_d, iou_c, disc_dice, cup_dice = 0,0,0,0
         for th in threshold:
 
@@ -243,7 +252,7 @@ class DiceCoeff(Function):
 
         t = (2 * self.inter.float() + eps) / self.union.float()
         return t
-
+    #backward چیه؟
     # This function has only a single output, so it gets only one gradient
     def backward(self, grad_output):
 

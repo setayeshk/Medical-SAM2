@@ -13,11 +13,18 @@ def main(args):
 
 
     device = torch.device(f'cuda:{args.gpu_device}' if torch.cuda.is_available() else 'cpu')
-    print("deviceeeee :" , device)
+
+    print("data loader device:" , device)
     nice_train_loader, nice_test_loader = get_dataloader(args)
 
+    # for batch in nice_train_loader:
+    #     # inputs, targets = batch
+    #     print(f'Inputs are on: {inputs.device}')
+    #     print(f'Targets are on: {targets.device}')
+    #     break
+
     net = get_network(args, args.net, use_gpu=True, gpu_device=args.gpu_device)
- 
+    
     validation_loss, validation_metrics = validation_sam(args, nice_test_loader, 0, net)
 
     print(f"Validation Loss: {validation_loss}")

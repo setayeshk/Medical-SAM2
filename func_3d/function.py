@@ -34,8 +34,15 @@ class CombinedLoss(nn.Module):
 
 
 GPUdevice = torch.device('cuda', args.gpu_device)
-pos_weight = torch.ones([1]).cuda(device=GPUdevice)*2
-criterion_G = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("device : ", device)
+
+if(device== "cuda"):
+    pos_weight = torch.ones([1]).cuda(device=GPUdevice)*2 
+else:
+    pos_weight = torch.ones([1])
+
+criterion_G = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight ).cuda()
 paper_loss = CombinedLoss(dice_weight=1 / 21, focal_weight=20 / 21)
 seed = torch.randint(1,11,(1,7))
 
@@ -197,24 +204,25 @@ def train_sam(args, net: nn.Module, optimizer1, optimizer2, train_loader,
 
     return epoch_loss / len(train_loader), epoch_prompt_loss / len(train_loader), epoch_non_prompt_loss / len(train_loader)
 
+
+
 def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
      # eval mode
     net.eval()
 
     n_val = len(val_loader)  # the number of batch
-    # برای ذخیره  (IoU و Dice Coefficient) 
+    # برای ذخیره  (IoU و Dice Coefficient)   نمیدونم چرا *1 هم گذاشته
     mix_res = (0,)*1*2
     # chat => برای ذخیره کل loss 
-    # tree of thoughts for prompt engineering  ** 
+    # tree of thoughts for prompt engineering  ** ر؟
     tot = 0
     threshold = (0.1, 0.3, 0.5, 0.7, 0.9)
-    #چند فریم یه بار پرامپت بده 
+
     prompt_freq = args.prompt_freq
 
     lossfunc = criterion_G
     # lossfunc = paper_loss
 
-    # باکس یا نقطه
     prompt = args.prompt
 
     with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
@@ -231,7 +239,7 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
             frame_id = list(range(imgs_tensor.size(0)))
             
             train_state = net.val_init_state(imgs_tensor=imgs_tensor) 
-            # رندوم به تعدادی که فرکانس میگه فریم برمیداره که پرامپت درست کنه
+           
             prompt_frame_id = list(range(0, len(frame_id), prompt_freq))
             obj_list = []
             for id in frame_id:
@@ -247,7 +255,7 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                     for ann_obj_id in obj_list:
                         try:
                             if prompt == 'click':
-                                # point ها رو توی btcv.py اضافه کرده
+                     
                                 points = pt_dict[id][ann_obj_id].to(device=GPUdevice)
                                 labels = point_labels_dict[id][ann_obj_id].to(device=GPUdevice)
                                 _, _, _ = net.train_add_new_points(
@@ -268,7 +276,7 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                                     clear_old_points=False,
                                 )
                         except KeyError:
-                            #اگه obj نبود و اینا ماسک 0 میده
+                         
                             _, _, _ = net.train_add_new_mask(
                                 inference_state=train_state,
                                 frame_idx=id,
@@ -296,6 +304,7 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
                         pred = video_segments[id][ann_obj_id]
                         pred = pred.unsqueeze(0)
                         # pred = torch.sigmoid(pred)
+                        # print("gpu deviceee :", GPUdevice)
                         try:
                             mask = mask_dict[id][ann_obj_id].to(dtype = torch.float32, device = GPUdevice)
                         except KeyError:
@@ -319,23 +328,23 @@ def validation_sam(args, val_loader, epoch, net: nn.Module, clean_dir=True):
 
 
                 
-                # # change for saving results as nifti file
-                # if args.save_nii:
+                # change for saving results as nifti file
+                if args.save_nii:
                   
-                #     nii_dir = f'./nii_outputs/{name[0]}/{id}'
-                #     os.makedirs(nii_dir, exist_ok=True)
+                    nii_dir = f'./nii_outputs/{name[0]}/{id}'
+                    os.makedirs(nii_dir, exist_ok=True)
                     
-                #     pred_np = pred.cpu().numpy()
-                #     mask_np = mask.cpu().numpy()
+                    pred_np = pred.cpu().numpy()
+                    mask_np = mask.cpu().numpy()
                     
-                #     pred_np = np.squeeze(pred_np)
-                #     mask_np = np.squeeze(mask_np)
+                    pred_np = np.squeeze(pred_np)
+                    mask_np = np.squeeze(mask_np)
                     
-                #     pred_img = nib.Nifti1Image(pred_np, affine=np.eye(4))
-                #     mask_img = nib.Nifti1Image(mask_np, affine=np.eye(4))
+                    pred_img = nib.Nifti1Image(pred_np, affine=np.eye(4))
+                    mask_img = nib.Nifti1Image(mask_np, affine=np.eye(4))
                     
-                #     nib.save(pred_img, f'{nii_dir}/pred_{ann_obj_id}.nii')
-                #     nib.save(mask_img, f'{nii_dir}/mask_{ann_obj_id}.nii')
+                    nib.save(pred_img, f'{nii_dir}/pred_{ann_obj_id}.nii')
+                    nib.save(mask_img, f'{nii_dir}/mask_{ann_obj_id}.nii')
 
                 total_num = len(frame_id) * len(obj_list)
                 loss = loss / total_num

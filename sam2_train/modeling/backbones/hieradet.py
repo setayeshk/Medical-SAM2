@@ -267,17 +267,42 @@ class Hiera(nn.Module):
         )
 
     def _get_pos_embed(self, hw: Tuple[int, int]) -> torch.Tensor:
+        # print("hw : ", hw)
         h, w = hw
         window_embed = self.pos_embed_window
         pos_embed = F.interpolate(self.pos_embed, size=(h, w), mode="bicubic")
+        # print("pos embed shapes :" , pos_embed.shape)
+        # print("window_embed :" , window_embed.shape)
         pos_embed = pos_embed + window_embed.tile(
             [x // y for x, y in zip(pos_embed.shape, window_embed.shape)]
         )
         pos_embed = pos_embed.permute(0, 2, 3, 1)
         return pos_embed
 
+    # def _get_pos_embed(self, hw: Tuple[int, int]) -> torch.Tensor:
+    #     h, w = hw  # دریافت ارتفاع و عرض تصویر ورودی
+    #     window_embed = self.pos_embed_window  # دریافت positional embedding پنجره‌ای
+    #     pos_embed = F.interpolate(self.pos_embed, size=(h, w), mode="bicubic")  # تغییر اندازه embedding اصلی به ابعاد تصویر
+
+    #     # محاسبه تعداد تکرارهای لازم برای هماهنگی با ابعاد تصویر
+    #     tile_h = (h + window_embed.shape[2] - 1) // window_embed.shape[2]
+    #     tile_w = (w + window_embed.shape[3] - 1) // window_embed.shape[3]
+        
+    #     # تکرار window_embed و اطمینان از تطابق دقیق با ابعاد تصویر
+    #     repeated_window_embed = window_embed.repeat(1, 1, tile_h, tile_w)
+    #     repeated_window_embed = repeated_window_embed[:, :, :h, :w]  # قطع کردن به ابعاد دقیق h, w
+        
+    #     pos_embed = pos_embed + repeated_window_embed
+    #     pos_embed = pos_embed.permute(0, 2, 3, 1)  # تغییر ترتیب ابعاد برای ادامه پردازش
+        
+    #     return pos_embed
+
+
+
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+        # print("xxxx : " , x.shape)
         x = self.patch_embed(x)
+        # print("patch xxxx : " , x.shape)
         # x: (B, H, W, C)
 
         # Add pos embed
